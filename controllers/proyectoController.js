@@ -5,17 +5,12 @@ export const obtenerProyectos = async (req, res) => {
   try {
     const proyectos = await Proyecto.find()
       .where("creador")
-      .equals(req.usuario);
+      .equals(req.usuario)
+      .select("-tareas");
     const id = proyectos.map((proyecto) => proyecto._id);
-    const tareas = await Tarea.find().where("proyecto").equals(id);
-    return res.status(200).json({
-      proyectos,
-      tareas,
-    });
+    return res.status(200).json(proyectos);
   } catch (error) {
-    return res
-      .status(404)
-      .json({ msg: "error al encontrar los proyectos y tareas" });
+    return res.status(404).json({ msg: "error al encontrar los proyectos" });
   }
 };
 
@@ -35,18 +30,17 @@ export const crearProyecto = async (req, res) => {
 
 export const obtenerProyecto = async (req, res) => {
   const { id } = req.params;
-  const proyecto = await Proyecto.findById(id);
 
-  if (!proyecto) {
-    const error = new Error("El proyecto no existe");
-    return res.status(404).json({ msg: error.message });
+  try {
+    const proyecto = await Proyecto.findById(id).populate("tareas");
+    if (proyecto.creador.toString() !== req.usuario._id.toString()) {
+      const error = new Error("Acción no válida");
+      return res.status(404).json({ msg: error.message });
+    }
+    res.status(200).json(proyecto);
+  } catch (error) {
+    return res.status(404).json({ msg: "El proyecto no existe" });
   }
-
-  if (proyecto.creador.toString() !== req.usuario._id.toString()) {
-    const error = new Error("Acción no válida");
-    return res.status(404).json({ msg: error.message });
-  }
-  res.status(200).json(proyecto);
 };
 
 export const editarProyecto = async (req, res) => {
